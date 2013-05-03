@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<install version="2.0" type="plugin" group="vmpayment" method="upgrade">
+	<name>VM Payment - Paychoice</name>
+	<creationDate>September 2012</creationDate>
+	<author>Paychoice</author>
+	<authorUrl>http://www.paychoice.com.au</authorUrl>
+	<copyright>Copyright (C) Paychoice. All rights reserved.</copyright>
+	<license>http://www.gnu.org/licenses/gpl-3.0.html GNU/GPL</license>
+	<version>2.0</version>
+	<element>paychoice</element>
+	<files><filename plugin="paychoice">paychoice.php</filename></files>
+	<languages><language tag="en-GB">en-GB.plg_vmpayment_paychoice.ini</language></languages>
+
+	
+	<params addpath="/administrator/components/com_virtuemart/elements" />
+
+	<params>
+	
+		<param name="paychoice_custid" type="text" size="50" default="" label="VMPAYMENT_PAYCHOICE_CUSTOMER_ID" description="VMPAYMENT_PAYCHOICE_CUSTOMER_ID_DESC"/>
+		<param name="paychoice_verified_status" type="vmorderstate" scope="com_virtuemart" default="C" label="VMPAYMENT_PAYCHOICE_ORDER_STATUS_SUCCESS" description="VMPAYMENT_PAYCHOICE_ORDER_STATUS_SUCCESS_DESC" />
+		<param name="paychoice_invalid_status" type="vmorderstate" scope="com_virtuemart" default="P" label="VMPAYMENT_PAYCHOICE_ORDER_STATUS_FAIL" description="VMPAYMENT_PAYCHOICE_ORDER_STATUS_FAIL_DESC" />
+		<param name="paychoice_test_request" type="radio" default="1" label="VMPAYMENT_PAYCHOICE_TEST_MODE" description="VMPAYMENT_PAYCHOICE_TEST_MODE_DESC">
+			<option value="0">COM_VIRTUEMART_NO</option>
+			<option value="1">COM_VIRTUEMART_YES</option>
+		</param>
+		<param name="paychoice_process_type" type="radio" default="live" label="VMPAYMENT_PAYCHOICE_PAYMENT_PROCESS_TYPE" description="VMPAYMENT_PAYCHOICE_PAYMENT_PROCESS_TYPE_DESC">
+			<option value="live">VMPAYMENT_PAYCHOICE_IMMEDIATE_PAYMENTS</option>
+			<option value="stored">VMPAYMENT_PAYCHOICE_STORED_PAYMENTS</option>
+		</param>
+		
+		<param	name="payment_logos" type="vmfiles" label="VMPAYMENT_PAYCHOICE_LOGOS" description="VMPAYMENT_PAYCHOICE_LOGOS_DESC" directory="/images/stories/virtuemart/payment" default="default" hide_default="1" hide_none="1" stripext="0"  exclude="^_" />
+		<param name="countries" type="vmcountries"  scope="com_virtuemart" default="" label="VMPAYMENT_PAYCHOICE_COUNTRIES_DESC" description="VMPAYMENT_PAYCHOICE_COUNTRIES_DESC"/>
+		<param name="min_amount" type="text"  label="VMPAYMENT_PAYCHOICE_MIN_AMOUNT" description="VMPAYMENT_PAYCHOICE_MIN_AMOUNT_DESC" />
+		<param name="max_amount" type="text"  label="VMPAYMENT_PAYCHOICE_MAX_AMOUNT" description="VMPAYMENT_PAYCHOICE_MAX_AMOUNT_DESC" />
+
+		<param name="tax_id" type="vmtaxes" scope="com_virtuemart"  label="VMPAYMENT_PAYCHOICE_TAX" description="VMPAYMENT_PAYCHOICE_TAX_DESC" />
+	
+	</params>
+
+</install>
