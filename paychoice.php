@@ -134,12 +134,14 @@ class plgVmpaymentPaychoice extends vmPSPlugin
 					$sandbox_msg .= '<br />' . JText::_('VMPAYMENT_PAYCHOICE_SANDBOX_TEST_NUMBERS');
 				}
 
+				//credit card list was in HTML but is not really needed
+				// <tr valign="top">
+					// <td nowrap width="10%" align="right"><label for="creditcardtype">' . JText::_('VMPAYMENT_PAYCHOICE_CCTYPE') . ':</label>&nbsp;</td>
+					// <td>' . $creditCardList .'</td>
+				// </tr>
+				
 				$html .= '<br /><span class="vmpayment_cardinfo">' . JText::_('VMPAYMENT_PAYCHOICE_COMPLETE_FORM') . $sandbox_msg . '
 					<table border="0" cellspacing="0" cellpadding="2" width="100%">
-					<tr valign="top">
-						<td nowrap width="10%" align="right"><label for="creditcardtype">' . JText::_('VMPAYMENT_PAYCHOICE_CCTYPE') . ':</label>&nbsp;</td>
-						<td>' . $creditCardList .'</td>
-					</tr>
 					<tr valign="top">
 						<td nowrap width="10%" align="right"><label for="cc_cvv">' . JText::_('VMPAYMENT_PAYCHOICE_NAMEONCARD') . ':</label>&nbsp;</td>
 						<td><input type="text" class="inputbox" id="cc_name_on_card_' . $method->virtuemart_paymentmethod_id . '" name="cc_name_on_card_' . $method->virtuemart_paymentmethod_id . '" value="' . $this->_cc_name_on_card . '" autocomplete="off" /></td>
@@ -148,7 +150,7 @@ class plgVmpaymentPaychoice extends vmPSPlugin
 					<tr valign="top">
 						<td nowrap width="10%" align="right"><label for="cc_type">' . JText::_('VMPAYMENT_PAYCHOICE_CCNUM') . ':</label>&nbsp;</td>
 						<td><input type="text" class="inputbox" id="cc_number_' . $method->virtuemart_paymentmethod_id . '" name="cc_number_' . $method->virtuemart_paymentmethod_id . '" value="' . $this->_cc_number . '"	   autocomplete="off"	onchange="ccError=razCCerror(' . $method->virtuemart_paymentmethod_id . ');
-							CheckCreditCardNumber(this . value, ' . $method->virtuemart_paymentmethod_id . ');
+							CheckCreditCardNumber(this.value.replace(new RegExp(\'(-|\s)\', \'g\'),\'\'), ' . $method->virtuemart_paymentmethod_id . ');
 							if (!ccError) {this.value=\'\';}" />
 							<div id="cc_cardnumber_errormsg_' . $method->virtuemart_paymentmethod_id . '"></div>
 						</td>
@@ -264,7 +266,7 @@ class plgVmpaymentPaychoice extends vmPSPlugin
 
 		$this->_cc_type = JRequest::getVar('cc_type_' . $cart->virtuemart_paymentmethod_id, '');
 		$this->_cc_name_on_card = JRequest::getVar('cc_name_on_card_' . $cart->virtuemart_paymentmethod_id, '');
-		$this->_cc_number = str_replace(" ","",JRequest::getVar('cc_number_' . $cart->virtuemart_paymentmethod_id, ''));
+		$this->_cc_number = str_replace(array(" ","-"),"",JRequest::getVar('cc_number_' . $cart->virtuemart_paymentmethod_id, ''));
 		$this->_cc_cvv = JRequest::getVar('cc_cvv_' . $cart->virtuemart_paymentmethod_id, '');
 		$this->_cc_expire_month = JRequest::getVar('cc_expire_month_' . $cart->virtuemart_paymentmethod_id, '');
 		$this->_cc_expire_year = JRequest::getVar('cc_expire_year_' . $cart->virtuemart_paymentmethod_id, '');
@@ -346,7 +348,6 @@ class plgVmpaymentPaychoice extends vmPSPlugin
 			return '';
 		}
 
-		//<todo>
 		$html = '<table class="adminlist">' . "\n";
 		$html .= $this->getHtmlHeaderBE();
 		$html .= $this->getHtmlRowBE('PAYCHOICE_PAYMENT_NAME', $paymentTable->payment_name);
@@ -361,7 +362,6 @@ class plgVmpaymentPaychoice extends vmPSPlugin
 		}
 		$html .= '</table>' . "\n";
 
-		//</todo>
 		return $html;
 	}
 
@@ -408,9 +408,9 @@ class plgVmpaymentPaychoice extends vmPSPlugin
 			'expirymonth'=>$this->_cc_expire_month,
 			'expiryyear'=>substr($this->_cc_expire_year,2,2),  //We need to show the year with two digits only
 			'cvv'=>$this->_cc_cvv,
-			'trans_number'=>uniqid( "paychoice_" ),
+			'trans_number'=>$order['details']['BT']->order_number,
 			'order_number'=>$order['details']['BT']->order_number,
-			'order_total'=>$order['details']['BT']->order_total, //WE need the $order_total in cents!
+			'order_total'=>$order['details']['BT']->order_total,
 		);
 
 		$response = $this->_doPayment($method,$params);
@@ -435,50 +435,42 @@ class plgVmpaymentPaychoice extends vmPSPlugin
 	}
 
 	function _handleResponse($response, $order, $payment_name)
-	{
-		$virtuemart_order_id = VirtueMartModelOrders::getOrderIdByOrderNumber($response->order_number);
+	{	
+	
+		$virtuemart_order_id = VirtueMartModelOrders::getOrderIdByOrderNumber($response->charge->reference);
 		if (!$virtuemart_order_id)
 		{
 			$this->approved = false;
 			$this->error = true;
 			$this->logInfo(JText::sprintf('VMPAYMENT_PAYCHOICE_ERROR_NO_ORDER_NUMBER', $response->order_number), 'ERROR');
 			$this->sendEmailToVendorAndAdmins(JText::sprintf('VMPAYMENT_PAYCHOICE_ERROR_NO_ORDER_NUMBER', $response->order_number), JText::sprintf('VMPAYMENT_PAYCHOICE_ERROR_WHILE_PROCESSING_PAYMENT', $response->order_number));
-			$html = Jtext::sprintf('VMPAYMENT_PAYCHOICE_ERROR', $response->errormsg, $response->error) . "<br />";
+			$html = Jtext::sprintf('VMPAYMENT_PAYCHOICE_ERROR', $response->charge->error, $response->charge->error_code) . "<br />";
 			$this->logInfo($html, 'PAYMENT DECLINED');
 			return $html; //the transaction has been submitted, we don't want to delete the order		}
 		}
+		
+		$response_fields = array();
+		$response_fields['virtuemart_order_id'] = $virtuemart_order_id;
+		$response_fields['invoice_number'] = $response->order_number;
+		$response_fields['paychoice_response_response_code'] = "{$response->charge->status_code} {$response->charge->status}";
+		$response_fields['paychoice_response_transaction_id'] = $response->charge->id;
+		$response_fields['paychoice_response_error_message'] = "{$response->charge->error_code} {$response->charge->error}";
+		$response_fields['paychoice_response_raw'] = print_r($response, true);
 
-		if( $response->response == 'accepted' )
+		if($response->charge->status_code == '0' )
 		{
 			$this->approved = true;
 			$this->error = false;
-			$response_fields = array();
-			$response_fields['virtuemart_order_id'] = $virtuemart_order_id;
-			$response_fields['invoice_number'] = $response->order_number;
-			$response_fields['paychoice_response_response_code'] = $response->response;
-			$response_fields['paychoice_response_transaction_id'] = $response->paychoiceTrxnNumber;
-			$response_fields['paychoice_response_error_message'] = $response->errormsg;
-			$response_fields['paychoice_response_raw'] = $response->raw;
 			$this->storePSPluginInternalData($response_fields, 'virtuemart_order_id', true);
 		}
-		elseif($response->response == 'declined')
+		elseif($response->charge->status_code == '5')
 		{
 			$this->approved = false;
 			$this->declined = true;
-			$html = Jtext::sprintf('VMPAYMENT_PAYCHOICE_ERROR', $response->errormsg, $response->error) . "<br />";
+			$html = Jtext::sprintf('VMPAYMENT_PAYCHOICE_ERROR', $response->charge->error, $response->charge->error_code) . "<br />";
 			$this->logInfo($html, 'PAYMENT DECLINED');
-
-			$response_fields = array();
-			$response_fields['virtuemart_order_id'] = $virtuemart_order_id;
-			$response_fields['invoice_number'] = $response->order_number;
-			$response_fields['paychoice_response_response_code'] = $response->response;
-			$response_fields['paychoice_response_transaction_id'] = $response->paychoiceTrxnNumber;
-			$response_fields['paychoice_response_error_message'] = $response->errormsg;
-			$response_fields['paychoice_response_raw'] = $response->raw;
 			$this->storePSPluginInternalData($response_fields, 'virtuemart_order_id', true);
-
 			return $html; //the transaction has been submitted, we don't want to delete the order
-
 		}
 		else
 		{
@@ -486,28 +478,10 @@ class plgVmpaymentPaychoice extends vmPSPlugin
 			$this->error = true;
 			$this->logInfo(JText::_('VMPAYMENT_PAYCHOICE_ERROR_CONNECTING'), 'ERROR');
 			$this->sendEmailToVendorAndAdmins(JText::_('VMPAYMENT_PAYCHOICE_ERROR_EMAIL_SUBJECT'), JText::_('VMPAYMENT_PAYCHOICE_ERROR_CONNECTING'));
-
-			$response_fields = array();
-			$response_fields['virtuemart_order_id'] = $virtuemart_order_id;
-			$response_fields['invoice_number'] = $response->order_number;
-			$response_fields['paychoice_response_response_code'] = $response->response;
-			$response_fields['paychoice_response_transaction_id'] = $response->paychoiceTrxnNumber;
-			$response_fields['paychoice_response_error_message'] = $response->errormsg;
-			$response_fields['paychoice_response_raw'] = null;
 			$this->storePSPluginInternalData($response_fields, 'virtuemart_order_id', true);
-
 			return JText::_('VMPAYMENT_PAYCHOICE_ERROR_CONNECTING');
 		}
 
-		$currencyModel = VmModel::getModel('Currency');
-		$currency = $currencyModel->getCurrency($order['details']['BT']->user_currency_id);
-
-		$html = '<table>' . "\n";
-		$html .= $this->getHtmlRow('PAYCHOICE_PAYMENT_NAME', $payment_name);
-		$html .= $this->getHtmlRow('PAYCHOICE_ORDER_NUMBER', $response->order_number);
-		$html .= $this->getHtmlRow('PAYCHOICE_AMOUNT', $response->paychoiceReturnAmount . ' ' . $currency->currency_name);
-		$html .= $this->getHtmlRow('PAYCHOICE_RESPONSE_TRANSACTION_ID', $response->paychoiceTrxnNumber);
-		$html .= '</table>' . "\n";
 		$this->logInfo('Order Number' . $response->order_number . ' payment approved', 'message');
 		return $html;
 	}
@@ -524,11 +498,9 @@ class plgVmpaymentPaychoice extends vmPSPlugin
 			return false;
 		}
 
-		if (!class_exists('VirtueMartModelVendor')) require(JPATH_VM_ADMINISTRATOR . DS . 'models' . DS . 'vendor.php');
-		$vendorId = 1; //VirtueMartModelVendor::getLoggedVendor();
 		$db = JFactory::getDBO();
 
-		$q = 'SELECT   `virtuemart_currency_id` FROM `#__virtuemart_currencies` WHERE `currency_code_3`= "USD"' ;
+		$q = 'SELECT   `virtuemart_currency_id` FROM `#__virtuemart_currencies` WHERE `currency_code_3`= "AUD"' ;
 		$db->setQuery($q);
 		$paymentCurrencyId = $db->loadResult();
 	}
@@ -601,8 +573,8 @@ class plgVmpaymentPaychoice extends vmPSPlugin
 	function plgVmDeclarePluginParamsPayment($name, $id, &$data) { return $this->declarePluginParams('payment', $name, $id, $data); }
 	function plgVmSetOnTablePluginParamsPayment($name, $id, &$table) { return $this->setOnTablePluginParams($name, $id, $table); }
 
-	function _doPayment($method,$params) {
-
+	function _doPayment($method,$params)
+	{
 		//Instantiate the paychoice http client
 		$paychoiceClient = new PaychoiceProxy();
 
@@ -635,6 +607,7 @@ class plgVmpaymentPaychoice extends vmPSPlugin
 				$errorMessage = "Transaction Error. Payment processor declined transaction: {$response->charge->error_code} {$response->charge->error}";
 			}
 		}
+		
 		catch (PaychoiceException $e)
 		{
 			$errorMessage = $e->getMessage();
@@ -645,53 +618,9 @@ class plgVmpaymentPaychoice extends vmPSPlugin
 		{
 
 		}
-
-		//Check whether the curl_exec worked.
-		if( curl_errno( $ch ) == CURLE_OK ) {
-
-			//Parse the XML response
-			xml_parse($this->parser, $xmlResponse, TRUE);
-
-			$rtn = null;
-			if( xml_get_error_code( $this->parser ) == XML_ERROR_NONE ) {
-				//Get the result into local variables.
-				$rtn->paychoiceTrxnStatus = $this->xmlData['paychoiceTrxnStatus'];
-				$rtn->response = $rtn->paychoiceTrxnStatus=='True' ? 'accepted' : 'declined';
-				$rtn->paychoiceTrxnNumber = $this->xmlData['paychoiceTrxnNumber'];
-				$rtn->paychoiceTrxnReference = $this->xmlData['paychoiceTrxnReference'];
-				//$rtn->paychoiceAuthCode = $this->xmlData['paychoiceAuthCode'];
-				$rtn->paychoiceReturnAmount = $this->xmlData['paychoiceReturnAmount']/100;
-				$rtn->order_number = $this->xmlData['paychoiceTrxnOption1'];
-				$rtn->paychoiceTrxnError = $this->xmlData['paychoiceTrxnError'];
-				$rtn->raw = json_encode($this->xmlData);
-				$rtn->error = 0;
-				$rtn->errormsg = '';
-			} else {
-				//An XML error occured. Return the error message and number.
-				$rtn->response = 'error';
-				$rtn->error = xml_get_error_code( $this->parser ) + 2000;
-				$rtn->errormsg = xml_error_string( $rtn->error );
-			}
-			//Clean up our XML parser
-			xml_parser_free( $this->parser );
-		} else {
-			//A CURL Error occured. Return the error message and number. (offset so we can pick the error apart)
-			$rtn->response = 'error';
-			$rtn->error = curl_errno( $ch ) + 1000;
-			$rtn->errormsg = curl_error( $ch );
-		}
-
-		//Clean up CURL, and return any error.
-		curl_close( $ch );
-		return $rtn;
+				
+		return $response;
 	}
-
-	/***********************************************************************
-	 *** XML Parser - Callback functions								 ***
-	 ***********************************************************************/
-	function epXmlElementStart ($parser, $tag, $attributes) {  $this->currentTag = $tag; }
-	function epXmlElementEnd ($parser, $tag) { $this->currentTag = ""; }
-	function epXmlData ($parser, $cdata) { $this->xmlData[$this->currentTag] = $cdata; }
 }
 
 class PaychoiceProxy
@@ -700,6 +629,11 @@ class PaychoiceProxy
 	{
 		$headers = array();
 
+		if (strlen($credentials) < 3)
+		{
+			throw new PayChoiceException("Paychoice merchant details not set");
+		}
+		
 		if (strlen($useSandbox) < 1)
 		{
 			throw new PayChoiceException("Paychoice sandbox/live environment not set");
